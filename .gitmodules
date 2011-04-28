@@ -1,3 +1,1 @@
-[submodule "node_modules/yaml"]
-	path = node_modules/yaml
-	url = https://github.com/visionmedia/js-yaml.git
+

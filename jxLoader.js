@@ -4,9 +4,10 @@
  */
 
 //requires
-var yaml = require('yaml'),
+var yaml = require('js-yaml').YAML,
     sys = require('sys'),
-    fs = require('fs-promise'),
+    fsp = require('fs-promise'),
+    fs = require('fs'),
     path = require('path'),
     Walker = require('walker');
 
@@ -24,13 +25,14 @@ var jxLoader = new Class({
 
     options: {},
 
-    config: {},
-    repos: {},
-    queue: [],
-    flat: {},
+    config: null,
+    repos: null,
+    flat: null,
 
     initialize: function (options) {
         this.setOptions(options);
+        this.config = {};
+        this.repos = {};
     },
 
     /**
@@ -38,52 +40,67 @@ var jxLoader = new Class({
      * 
      * Paramaters:
      * config - The config should be an object that lists the appropriate keys for
-     *      the listed repository.
-     * domain - the domain to associate this repo with. optional. If excluded then this repository
-     *          will be available to all domains and subdomains.
+     *      the listed repository
      */
-    addRepository: function (config, domain) {
+    addRepository: function (config) {
 
 
-        Object.each(config, function(conf, key){
-            if (!nil(this.config[domain]) && typeOf(this.config[domain]) == 'object') {
+        this.config = Object.merge(this.config, {repos: config});
 
-                    if (this.config[domain][key]){
-                        this.config[domain][key] = Object.merge(this.config[domain][key], conf);
-                    } else {
-                        this.config[domain][key] = conf;
-                    }
-
-            } else {
-                this.config[domain] = config;
-            }
-
+        //core.debug('config after merge in addrepository',this.config);
+        
+        Object.each(this.config.repos, function(conf, key){
             if (nil(this.repos[key])) {
                 this.loadRepository(key, conf);
             }
+        },this);
 
-        }, this);
+
 
 
     },
 
     loadRepository: function (key, config) {
-        var path = config.paths.js;
+        var p = config.paths.js,
+            me = this;
 
         //walk the path and process all files we find...
-        Walker(path).filterDir(function(dir){
-            core.debug('walking dir',dir);
+        Walker(p).filterDir(function(dir){
+            //core.debug('walking dir',dir);
             return !(dir.test('^\.[\S\s]*$','i'));
         }).on('file', function(file){
-            core.debug('processing file',file);
-            fs.readFile(file, 'utf-8').then(function(data){
+            //core.debug('processing file',file);
+            var debug = (file == '');
+            try {
+                var data = fs.readFileSync(file, 'utf-8');
+
+                if (debug) sys.puts('File contents: ' + sys.inspect(data));
                 //process the file
                 var descriptor = {},
-                    regexp = /-{3}\s*\n*([\S\s]*)\n*\.{3}/,  //regexp to get yaml contents
-                    matches = regexp.exec(data);
+                    regexp = /^-{3}\s*\n*([\S\s]*)\n+\.{3}/m,  //regexp to get yaml contents
+                    matches = data.match(regexp);
+
+                if (debug) sys.puts('All matches from getting yaml headers: ' + sys.inspect(matches));
 
                 if (!nil(matches)) {
-                    descriptor = yaml.eval(matches[1]);
+                    matches.shift();
+                    delete matches.index;
+                    delete matches.input;
+                    if (debug) sys.puts('matches is a ' + typeOf(matches));
+                    if (debug) sys.puts('Matches from getting yaml headers: ' + matches[0]);
+                    //remove \n from the string
+                    var str = matches[0].replace(new RegExp('\r','g'),'');
+                    if (debug) sys.puts('Matches from getting yaml headers after replacement: ' + str);
+                    try {
+                        descriptor = yaml.evaluate(str, debug);
+                    } catch (err) {
+                        sys.puts('!!! error converting yaml');
+                        sys.puts('YAML object: ' + sys.inspect(yaml));
+                        sys.puts('error: ' + sys.inspect(err));
+                        throw err;
+                    }
+
+                    if (debug) sys.puts('object returned from yaml eval = ' + sys.inspect(descriptor));
 
                     var requires = Array.from(!nil(descriptor.requires) ? descriptor.requires : []);
                     var provides = Array.from(!nil(descriptor.provides) ? descriptor.provides : []);
@@ -93,14 +110,17 @@ var jxLoader = new Class({
                     //normalize requires and optional. Fills up the default package name
                     //if one is not present and strips version info
                     requires.each(function(r, i){
-                        requires[i] = this.parse_name(key, r).join('/');
+                        requires[i] = me.parse_name(key, r).join('/').replace(' ','');
                     },this);
 
                     optional.each(function(r, i){
-                        optional[i] = this.parse_name(key, r).join('/');
+                        optional[i] = me.parse_name(key, r).join('/').replace(' ','');
                     },this);
 
-                    this.repos[key][filename] = Object.merge(descriptor,{
+                    if (nil(me.repos[key])) {
+                        me.repos[key] = {};
+                    }
+                    me.repos[key][filename] = Object.merge(descriptor,{
                         repo: key,
                         requires: requires,
                         provides: provides,
@@ -108,28 +128,36 @@ var jxLoader = new Class({
                         path: file
                     });
 
+                    if (debug) sys.puts('Done processing ' + filename);
                 } else {
                     //there is no yaml header... drop this file
-                    return;
+                    sys.puts('no header for ' + file);
+                    if (debug) throw new Error();
                 }
 
-            }.bind(this), function(err){
+
+
+            } catch (err) {
+                sys.puts('!!!err : ' + sys.inspect(err));
                 //do nothing, just finish up
-                core.debug('no file',file);
-                return;
-            }.bind(this));
+                //sys.puts('no file ' + file);
+                throw err;
+            }
+
+            return;
         });
     },
 
     parse_name: function (def, name){
         var exploded = name.split('/');
+        //sys.puts('exploded = ' + sys.inspect(exploded));
         if (exploded.length == 1) {
             return [def, exploded[0]];
         }
         if (nil(exploded[0])) {
             return [def, exploded[1]];
         }
-        var exploded2 = exploded.split(':');
+        var exploded2 = exploded[0].split(':');
         if (exploded2.length == 1) {
             return exploded;
         }
@@ -137,15 +165,18 @@ var jxLoader = new Class({
     },
 
     flatten: function (obj) {
+        //core.debug('flattening',obj);
         var flat = {};
         Object.each(obj, function(items, repo){
             Object.each(items, function(value, key){
                 value.provides.each(function(val){
+                    val = val.replace(' ','');
                     flat[repo.toLowerCase() + '/' + val.toLowerCase()] = value;
                 },this);
             },this);
         },this);
 
+        //core.debug('flattened object',flat);
         return flat;
     },
 
@@ -162,23 +193,31 @@ var jxLoader = new Class({
         exclude = !nil(exclude) ? exclude : [];
 
         var list = [];
+        
+        if (nil(this.flat)) {
+            this.flat = this.flatten(this.repos);
+        }
 
         if (!nil(repos)) {
             Array.from(repos).each(function(val){
+                core.debug('repo is',val);
                 var o = {};
                 o[val] = this.repos[val];
                 var flat = this.flatten(o);
-                flat.each(function(obj, key){
-                    list = this.includeDependencies(val, key, opts, exclude, list, type, [key]);
+                Object.each(flat, function(obj, key){
+                    list = this.includeDependencies(val, key, opts, exclude, flat, list, type, [key]);
                 },this);
             },this);
         }
 
         if (!nil(classes)) {
+            //core.debug('classes',classes);
             classes.each(function(val){
+                //core.debug('find repo for',val);
                 var r = this.findRepo(val);
+                //core.debug('repo returned',r);
                 //clear visited reference
-                this.flat.each(function(obj, key){
+                Object.each(this.flat, function(obj, key){
                     obj.visited = false;
                 },this);
                 list = this.includeDependencies(r, val, opts, exclude, this.flat, list, type);
@@ -195,66 +234,86 @@ var jxLoader = new Class({
         exclude = !nil(exclude) ? exclude : [];
         opts = !nil(opts) ? opts : true;
 
-        var deps;
+        if (nil(this.flat)) {
+            this.flat = this.flatten(this.repos);
+        }
+        
+        //core.debug('flattened repo array', this.flat);
+        
+        var deps, 
+            ret;
         if (includeDeps) {
             deps = this.compileDeps(classes, repos, type, opts, exclude);
         } else {
             deps = this.convertClassesToDeps(classes, type, exclude);
         }
 
+        //core.debug('deps to include files for',deps);
+        
         if (deps.length > 0) {
             var included = [],
                 sources = [],
-                ret;
+                ret2;
 
             if (type == 'js') {
-                ret = this.getJsFiles(sources, included, deps);
+                //core.log('!!!getting sources of dependencies');
+                ret2 = this.getJsFiles(sources, included, deps);
             } else {
-                ret = this.getCssFiles(sources, included, theme, deps);
+                ret2 = this.getCssFiles(sources, included, theme, deps);
             }
 
-            return {
-                included: ret.included,
-                source: ret.source.join('\n\n')
-            }
+            ret = {
+                included: ret2.includes,
+                source: ret2.sources.join('\n\n')
+            };
         } else {
-            return false;
+            ret = false;
         }
+        return ret;
     },
 
     includeDependencies: function (repo, klass, opts, exclude, flat, list, type, ml) {
+        //core.debug('repo passed into includeDependencies',repo);
         klass = klass.contains('/') ? klass : repo.toLowerCase() + '/' + klass.toLowerCase();
 
-        if (Object.keys(flat).contains(klass)) {
+        if (!Object.keys(flat).contains(klass)) {
+            //core.log('!!!this class, ' + klass + ' is not in loader.... returning.');
             return list;
         }
 
         var inf = flat[klass];
 
-        if ((inf.visited && ml.contains(klass))
-            || (type=='js' && (exclude.contains(inf.path) || list.contains(inf.path)))
-            || (type=='css' && (exclude.contains(klass) || list.contains(klass)))
-            || (type=='jsdeps' && (exclude.contains(inf.path) || list.contains(klass)))) {
+        if ((inf.visited && ml.contains(klass)) ||
+            (type=='js' && (exclude.contains(inf.path) || list.contains(inf.path))) ||
+            (type=='css' && (exclude.contains(klass) || list.contains(klass))) ||
+            (type=='jsdeps' && (exclude.contains(inf.path) || list.contains(klass)))) {
+            //core.log('!!!this file is either excluded or already in the dependency list');
             return list;
         }
 
         var requires = Array.from(inf.requires);
-        flat[klass]['visited'] = true;
+        flat[klass].visited = true;
         if (opts && Object.keys(inf).contains(optional) && inf.optional.length > 0) {
             requires = Array.merge(requires, inf.optional);  //check if Array.merge is correct
         }
         if (requires.length > 0) {
             requires.each(function(req){
                 var parts = req.split('/');
+                if (nil(ml)) {
+                    ml = [];
+                }
                 ml.push(klass);
+                //core.debug('getting dependencies of',klass);
                 list = this.includeDependencies(parts[0],parts[1],opts, exclude, flat, list, type, ml);
                 ml.pop();
             },this);
         }
 
         if (type=='js') {
+            //core.debug('adding to list',inf.path);
             list.push(inf.path);
         } else {
+            //core.debug('adding to list',klass);
             list.push(klass);
         }
 
@@ -262,19 +321,167 @@ var jxLoader = new Class({
     },
 
     convertClassesToDeps: function (classes, type, exclude) {
+        var list;
 
+        if (typeOf(classes) != 'array') {
+            classes = Array.from(classes);
+        }
+
+        classes.each(function(klass){
+            if (klass.contains('/')) {
+                if (type=='js' && !exclude.contains(this.flat[klass.toLowerCase()].path)) {
+                    list.push(this.flat[klass.toLowerCase()].path);
+                } else if (type=='css' && !exclude.contains(klass)) {
+                    list.push(klass);
+                } else {
+                    Object.each(this.flat, function(arr, key) {
+                        var parts = key.split('/');
+                        if (parts[0].toLowerCase() == klass.toLowerCase()) {
+                            if (type=='js' && !exclude.contains(arr.path)) {
+                                list.push(arr.path);
+                            } else if (type=='css' && !exclude.contains(klass)) {
+                                list.push(key);
+                            }
+                        }
+                    },this);
+                }
+            }
+        },this);
+
+        return list;
     },
 
     findRepo: function(klass) {
-
+        //core.debug('finding repo for', klass);
+        if (klass.contains('/')) {
+            var parts = klass.split('/');
+            return parts[0];
+        } else {
+            if (nil(this.flat)) {
+                this.flat = this.flatten(this.repos);
+                //core.debug('flattened repo list', this.flat);
+            }
+            var ret;
+            Object.each(this.flat, function(arr, key){
+                // core.debug('\tchecking',key);
+                var parts = key.split('/');
+                if (parts[1].toLowerCase() == klass.toLowerCase()) {
+                    ret = parts[0];
+                }
+            },this);
+            //core.debug('returning',ret);
+            return ret;
+        }
     },
 
     getJsFiles: function (sources, included, deps) {
-
+        deps.each(function(filename){
+            //core.debug('adding source for',filename);
+            var s = fs.readFileSync(filename, 'utf-8');
+            //core.log('source is' + s);
+            sources.push(s);
+            included.push(filename);
+        },this);
+        return {
+            includes: included,
+            sources: sources
+        };
     },
 
     getCssFiles: function (sources, included, theme, deps) {
+        core.debug('css theme passed in', theme);
+        deps.each(function(dep){
+            var parts = dep.split('/');
+            core.log('repo',parts[0]);
+            included.push(dep);
+            if (!nil(this.config.repos[parts[0]].paths.css)) {
+                var csspath = this.config.repos[parts[0]].paths.css;
+                csspath = csspath.replace('{theme}',theme);
+                csspath = fs.realpathSync(csspath);
+                var cssfiles = !nil(this.flat[dep].css) ? this.flat[dep].css : '';
 
+                if (cssfiles.length > 0) {
+                    cssfiles.each(function(css){
+                        var fp = csspath + '/' + css + '.css';
+                        if (path.existsSync(fp)) {
+                            var s = fs.readFileSync(fp, 'utf-8');
+                            if (this.options.rewriteImageUrl && !nil(this.config.repos[parts[0]].imageUrl)) {
+                                core.log('updating urls in css file ' + css);
+                                core.debug('\rreplacing ', this.config.repos[parts[0]].imageUrl);
+                                core.debug('\twith', this.options.imagePath);
+                                s = s.replace(new RegExp(this.config.repos[parts[0]].imageUrl, 'g'),this.options.imagePath);
+                            } else {
+                                core.log('not updating urls in css file ' + css);
+                            }
+                            sources.push(s);
+                        } else {
+                            if (!nil(this.config.repos[parts[0]].paths.cssalt)) {
+                                var csspathalt = this.config.repos[parts[0]].paths.cssalt;
+                                csspathalt = csspathalt.replace('{theme}',theme);
+                                csspathalt = fs.realpathSync(csspathalt);
+                                fp = csspathalt + '/' + css + '.css';
+                                if (path.existsSync(fp)) {
+                                    var s = fs.readFileSync(fp, 'utf-8');
+                                    if (this.options.rewriteImageUrl && !nil(this.config.repos[parts[0]].imageUrl)) {
+                                        core.log('updating urls in css file ' + css);
+                                        s = s.replace(new RegExp(this.config.repos[parts[0]].imageUrl, 'g'),this.options.imagePath);
+                                    } else {
+                                        core.log('not updating urls in css file ' + css);
+                                    }
+                                    sources.push(s);
+                                }
+                            }
+                        }
+                    },this);
+
+                    core.debug('should we move image files',this.options.moveImages);
+                    core.debug('are there images to move',!nil(this.flat[dep].images));
+                    if (this.options.moveImages && !nil(this.flat[dep].images)) {
+                        core.log('moving image files');
+                        var imageFiles = this.flat[dep].images;
+                        core.debug('\timage files to move',imageFiles);
+                        if (imageFiles.length > 0) {
+                            var ipath = this.config.repos[parts[0]].paths.images,
+                                imageLocation = this.config.repos[parts[0]].imageLocation;
+
+                            if (ipath.contains('{theme}')) {
+                                ipath = ipath.replace('{theme}', theme);
+                            }
+                            ipath = fs.realpathSync(ipath);
+
+                            core.debug('\timage path',ipath);
+                            //create destination if it's not already there
+                            if (!path.existsSync(imageLocation)) {
+                                core.debug('\tcreating image file location',imageLocation);
+                                fs.mkdirSync(imageLocation);
+                            }
+
+                            imageFiles.each(function(file){
+                                core.debug('\tchecking for existing',file);
+                                if (!path.existsSync(imageLocation + '/' + file)) {
+                                    var inStr = fs.createReadStream(ipath + '/' + file),
+                                        outStr = fs.createWriteStream(imageLocation + '/' + file);
+
+                                    core.log('\t\tfile does not exist... move it');
+                                    inStr.pipe(outStr);
+                                } else {
+                                    core.log('\t\tFile already exists');
+                                }
+                            },this);
+                        } else {
+                            core.log('No image files to move');
+                        }
+                    } else {
+                        core.log('Not moving image files');
+                    }
+                }
+            }
+        },this);
+        
+        return {
+            includes: included,
+            sources: sources
+        };
     }
 
 

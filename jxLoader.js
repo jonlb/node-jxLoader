@@ -73,7 +73,9 @@ var jxLoader = new Class({
             var debug = (file == '');
             try {
                 var data = fs.readFileSync(file, 'utf-8');
-
+                
+                core.debug('file passed in', file);
+                
                 if (debug) sys.puts('File contents: ' + sys.inspect(data));
                 //process the file
                 var descriptor = {},
@@ -109,6 +111,7 @@ var jxLoader = new Class({
 
                     //normalize requires and optional. Fills up the default package name
                     //if one is not present and strips version info
+                    core.debug('requires to normalize', requires);
                     requires.each(function(r, i){
                         requires[i] = me.parse_name(key, r).join('/').replace(' ','');
                     },this);
@@ -149,6 +152,8 @@ var jxLoader = new Class({
     },
 
     parse_name: function (def, name){
+        core.debug('name to split', name);
+        core.debug('def passed', def);
         var exploded = name.split('/');
         //sys.puts('exploded = ' + sys.inspect(exploded));
         if (exploded.length == 1) {

@@ -47,8 +47,6 @@ var jxLoader = new Class({
 
         this.config = Object.merge(this.config, {repos: config});
 
-        //core.debug('config after merge in addrepository',this.config);
-        
         Object.each(this.config.repos, function(conf, key){
             if (nil(this.repos[key])) {
                 this.loadRepository(key, conf);
@@ -66,17 +64,13 @@ var jxLoader = new Class({
 
         //walk the path and process all files we find...
         Walker(p).filterDir(function(dir){
-            //core.debug('walking dir',dir);
             return !(dir.test('^\.[\S\s]*$','i'));
         }).on('file', function(file){
-            //core.debug('processing file',file);
             var debug = (file == '');
             try {
                 var data = fs.readFileSync(file, 'utf-8');
                 
-                core.debug('file passed in', file);
-                
-                if (debug) sys.puts('File contents: ' + sys.inspect(data));
+               if (debug) sys.puts('File contents: ' + sys.inspect(data));
                 //process the file
                 var descriptor = {},
                     regexp = /^-{3}\s*\n*([\S\s]*)\n+\.{3}/m,  //regexp to get yaml contents
@@ -111,7 +105,6 @@ var jxLoader = new Class({
 
                     //normalize requires and optional. Fills up the default package name
                     //if one is not present and strips version info
-                    core.debug('requires to normalize', requires);
                     requires.each(function(r, i){
                         requires[i] = me.parse_name(key, r).join('/').replace(' ','');
                     },this);
@@ -152,9 +145,7 @@ var jxLoader = new Class({
     },
 
     parse_name: function (def, name){
-        core.debug('name to split', name);
-        core.debug('def passed', def);
-        var exploded = name.split('/');
+       var exploded = name.split('/');
         //sys.puts('exploded = ' + sys.inspect(exploded));
         if (exploded.length == 1) {
             return [def, exploded[0]];
@@ -170,7 +161,6 @@ var jxLoader = new Class({
     },
 
     flatten: function (obj) {
-        //core.debug('flattening',obj);
         var flat = {};
         Object.each(obj, function(items, repo){
             Object.each(items, function(value, key){
@@ -181,7 +171,6 @@ var jxLoader = new Class({
             },this);
         },this);
 
-        //core.debug('flattened object',flat);
         return flat;
     },
 
@@ -205,7 +194,6 @@ var jxLoader = new Class({
 
         if (!nil(repos)) {
             Array.from(repos).each(function(val){
-                core.debug('repo is',val);
                 var o = {};
                 o[val] = this.repos[val];
                 var flat = this.flatten(o);
@@ -216,11 +204,8 @@ var jxLoader = new Class({
         }
 
         if (!nil(classes)) {
-            //core.debug('classes',classes);
             classes.each(function(val){
-                //core.debug('find repo for',val);
                 var r = this.findRepo(val);
-                //core.debug('repo returned',r);
                 //clear visited reference
                 Object.each(this.flat, function(obj, key){
                     obj.visited = false;
@@ -243,8 +228,6 @@ var jxLoader = new Class({
             this.flat = this.flatten(this.repos);
         }
         
-        //core.debug('flattened repo array', this.flat);
-        
         var deps, 
             ret;
         if (includeDeps) {
@@ -253,16 +236,13 @@ var jxLoader = new Class({
             deps = this.convertClassesToDeps(classes, type, exclude);
         }
 
-        //core.debug('deps to include files for',deps);
-        
         if (deps.length > 0) {
             var included = [],
                 sources = [],
                 ret2;
 
             if (type == 'js') {
-                //core.log('!!!getting sources of dependencies');
-                ret2 = this.getJsFiles(sources, included, deps);
+               ret2 = this.getJsFiles(sources, included, deps);
             } else {
                 ret2 = this.getCssFiles(sources, included, theme, deps);
             }
@@ -278,11 +258,9 @@ var jxLoader = new Class({
     },
 
     includeDependencies: function (repo, klass, opts, exclude, flat, list, type, ml) {
-        //core.debug('repo passed into includeDependencies',repo);
         klass = klass.contains('/') ? klass : repo.toLowerCase() + '/' + klass.toLowerCase();
 
         if (!Object.keys(flat).contains(klass)) {
-            //core.log('!!!this class, ' + klass + ' is not in loader.... returning.');
             return list;
         }
 
@@ -292,7 +270,6 @@ var jxLoader = new Class({
             (type=='js' && (exclude.contains(inf.path) || list.contains(inf.path))) ||
             (type=='css' && (exclude.contains(klass) || list.contains(klass))) ||
             (type=='jsdeps' && (exclude.contains(inf.path) || list.contains(klass)))) {
-            //core.log('!!!this file is either excluded or already in the dependency list');
             return list;
         }
 
@@ -308,17 +285,14 @@ var jxLoader = new Class({
                     ml = [];
                 }
                 ml.push(klass);
-                //core.debug('getting dependencies of',klass);
                 list = this.includeDependencies(parts[0],parts[1],opts, exclude, flat, list, type, ml);
                 ml.pop();
             },this);
         }
 
         if (type=='js') {
-            //core.debug('adding to list',inf.path);
             list.push(inf.path);
         } else {
-            //core.debug('adding to list',klass);
             list.push(klass);
         }
 
@@ -357,33 +331,27 @@ var jxLoader = new Class({
     },
 
     findRepo: function(klass) {
-        //core.debug('finding repo for', klass);
         if (klass.contains('/')) {
             var parts = klass.split('/');
             return parts[0];
         } else {
             if (nil(this.flat)) {
                 this.flat = this.flatten(this.repos);
-                //core.debug('flattened repo list', this.flat);
             }
             var ret;
             Object.each(this.flat, function(arr, key){
-                // core.debug('\tchecking',key);
                 var parts = key.split('/');
                 if (parts[1].toLowerCase() == klass.toLowerCase()) {
                     ret = parts[0];
                 }
             },this);
-            //core.debug('returning',ret);
             return ret;
         }
     },
 
     getJsFiles: function (sources, included, deps) {
         deps.each(function(filename){
-            //core.debug('adding source for',filename);
             var s = fs.readFileSync(filename, 'utf-8');
-            //core.log('source is' + s);
             sources.push(s);
             included.push(filename);
         },this);
@@ -394,10 +362,8 @@ var jxLoader = new Class({
     },
 
     getCssFiles: function (sources, included, theme, deps) {
-        core.debug('css theme passed in', theme);
         deps.each(function(dep){
             var parts = dep.split('/');
-            core.log('repo',parts[0]);
             included.push(dep);
             if (!nil(this.config.repos[parts[0]].paths.css)) {
                 var csspath = this.config.repos[parts[0]].paths.css;
@@ -411,12 +377,9 @@ var jxLoader = new Class({
                         if (path.existsSync(fp)) {
                             var s = fs.readFileSync(fp, 'utf-8');
                             if (this.options.rewriteImageUrl && !nil(this.config.repos[parts[0]].imageUrl)) {
-                                core.log('updating urls in css file ' + css);
-                                core.debug('\rreplacing ', this.config.repos[parts[0]].imageUrl);
-                                core.debug('\twith', this.options.imagePath);
                                 s = s.replace(new RegExp(this.config.repos[parts[0]].imageUrl, 'g'),this.options.imagePath);
                             } else {
-                                core.log('not updating urls in css file ' + css);
+                                sys.puts('not updating urls in css file ' + css);
                             }
                             sources.push(s);
                         } else {
@@ -428,10 +391,9 @@ var jxLoader = new Class({
                                 if (path.existsSync(fp)) {
                                     var s = fs.readFileSync(fp, 'utf-8');
                                     if (this.options.rewriteImageUrl && !nil(this.config.repos[parts[0]].imageUrl)) {
-                                        core.log('updating urls in css file ' + css);
                                         s = s.replace(new RegExp(this.config.repos[parts[0]].imageUrl, 'g'),this.options.imagePath);
                                     } else {
-                                        core.log('not updating urls in css file ' + css);
+                                        sys.puts('not updating urls in css file ' + css);
                                     }
                                     sources.push(s);
                                 }
@@ -439,12 +401,8 @@ var jxLoader = new Class({
                         }
                     },this);
 
-                    core.debug('should we move image files',this.options.moveImages);
-                    core.debug('are there images to move',!nil(this.flat[dep].images));
                     if (this.options.moveImages && !nil(this.flat[dep].images)) {
-                        core.log('moving image files');
                         var imageFiles = this.flat[dep].images;
-                        core.debug('\timage files to move',imageFiles);
                         if (imageFiles.length > 0) {
                             var ipath = this.config.repos[parts[0]].paths.images,
                                 imageLocation = this.config.repos[parts[0]].imageLocation;
@@ -454,30 +412,26 @@ var jxLoader = new Class({
                             }
                             ipath = fs.realpathSync(ipath);
 
-                            core.debug('\timage path',ipath);
                             //create destination if it's not already there
                             if (!path.existsSync(imageLocation)) {
-                                core.debug('\tcreating image file location',imageLocation);
                                 fs.mkdirSync(imageLocation);
                             }
 
                             imageFiles.each(function(file){
-                                core.debug('\tchecking for existing',file);
                                 if (!path.existsSync(imageLocation + '/' + file)) {
                                     var inStr = fs.createReadStream(ipath + '/' + file),
                                         outStr = fs.createWriteStream(imageLocation + '/' + file);
 
-                                    core.log('\t\tfile does not exist... move it');
                                     inStr.pipe(outStr);
                                 } else {
-                                    core.log('\t\tFile already exists');
+                                    sys.puts('\t\tFile already exists');
                                 }
                             },this);
                         } else {
-                            core.log('No image files to move');
+                            sys.puts('No image files to move');
                         }
                     } else {
-                        core.log('Not moving image files');
+                        sys.puts('Not moving image files');
                     }
                 }
             }
@@ -492,5 +446,4 @@ var jxLoader = new Class({
 
 });
 
-//core.debug('jxLoader object',jxLoader);
 exports.jxLoader = jxLoader;

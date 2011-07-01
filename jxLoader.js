@@ -28,6 +28,8 @@ var jxLoader = new Class({
     config: null,
     repos: null,
     flat: null,
+    numRepos: 0,
+    loadedRepos: 0,
 
     initialize: function (options) {
         this.setOptions(options);
@@ -46,7 +48,9 @@ var jxLoader = new Class({
 
 
         this.config = Object.merge(this.config, {repos: config});
-
+        
+        this.numRepos = Object.getLength(this.config.repos);
+        
         Object.each(this.config.repos, function(conf, key){
             if (nil(this.repos[key])) {
                 this.loadRepository(key, conf);
@@ -143,7 +147,10 @@ var jxLoader = new Class({
             return;
         })
         .on('end',function(){
-            this.fireEvent('loadRepoDone', [key]);
+            this.loadedRepos++;
+            if (this.loadedRepos == this.numRepos) {
+                this.fireEvent('loadRepoDone', [key]);
+            }
         }.bind(this));
     },
 

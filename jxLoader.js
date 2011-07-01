@@ -141,7 +141,10 @@ var jxLoader = new Class({
             }
 
             return;
-        });
+        })
+        .on('end',function(){
+            this.fireEvent('loadRepoDone', [key]);
+        }.bind(this));
     },
 
     parse_name: function (def, name){

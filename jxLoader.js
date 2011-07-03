@@ -240,7 +240,9 @@ var jxLoader = new Class({
         
         var deps, 
             ret;
-        if (includeDeps) {
+            
+        
+        if (includeDeps || !nil(repos)) {
             deps = this.compileDeps(classes, repos, type, opts, exclude);
         } else {
             deps = this.convertClassesToDeps(classes, type, exclude);

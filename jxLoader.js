@@ -291,7 +291,7 @@ var jxLoader = new Class({
 
         var requires = Array.from(inf.requires);
         flat[klass].visited = true;
-        if (opts && Object.keys(inf).contains(optional) && inf.optional.length > 0) {
+        if (opts && Object.keys(inf).contains('optional') && inf.optional.length > 0) {
             requires = Array.merge(requires, inf.optional);  //check if Array.merge is correct
         }
         if (requires.length > 0) {

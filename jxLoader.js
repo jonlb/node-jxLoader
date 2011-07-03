@@ -270,7 +270,7 @@ var jxLoader = new Class({
         } else {
             ret = false;
         }
-        console.warn("returning: " + util.inspect(ret,false,null));
+        //console.warn("returning: " + util.inspect(ret,false,null));
         return ret;
     },
 

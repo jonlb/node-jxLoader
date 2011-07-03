@@ -186,7 +186,7 @@ var jxLoader = new Class({
     },
 
     getRepoArray: function () {
-        return this.repo;
+        return this.repos;
     },
 
     getFlatArray: function () {

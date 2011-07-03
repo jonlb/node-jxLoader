@@ -9,6 +9,7 @@ var yaml = require('js-yaml').YAML,
     fsp = require('fs-promise'),
     fs = require('fs'),
     path = require('path'),
+    util = require('util'),
     Walker = require('walker');
 
 //check to see if mootools is already in the environment
@@ -203,6 +204,8 @@ var jxLoader = new Class({
         }
 
         if (!nil(repos)) {
+            sys.puts("in compileDeps... ready to get repo info");
+            sys.puts("repos to get: " + util.inspect(repos, false, null));
             Array.from(repos).each(function(val){
                 var o = {};
                 o[val] = this.repos[val];

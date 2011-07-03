@@ -244,6 +244,7 @@ var jxLoader = new Class({
         var deps, 
             ret;
             
+        sys.puts("repos passed in: " + util.inspect(repos,false,null));
         
         if (includeDeps || !nil(repos)) {
             deps = this.compileDeps(classes, repos, type, opts, exclude);

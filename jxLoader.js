@@ -215,10 +215,14 @@ var jxLoader = new Class({
         if (!nil(repos)) {
             sys.puts("in compileDeps... ready to get repo info");
             sys.puts("repos to get: " + util.inspect(repos, false, null));
+            sys.puts("type: " + type);
             Array.from(repos).each(function(val){
                 var o = {};
                 o[val] = this.repos[val];
                 var flat = this.flatten(o);
+                Object.each(flat, function(obj, key){
+                    obj.visited = false;
+                },this);
                 Object.each(flat, function(obj, key){
                     list = this.includeDependencies(val, key, opts, exclude, flat, list, type, [key]);
                 },this);

@@ -129,6 +129,14 @@ var jxLoader = new Class({
                         optional: optional,
                         path: file
                     });
+                    
+                    //make sure this is truly an object, not an array
+                    var obj = {};
+                    Object.each(me.repos[key][filename], function(value, key){
+                        obj[key] = value;
+                    });
+                    
+                    me.repos[key][filename] = obj;
 
                     if (debug) sys.puts('Done processing ' + filename);
                 } else {

@@ -101,8 +101,9 @@ var jxLoader = new Class({
                         throw err;
                     }
 
-                    if (debug) sys.puts('object returned from yaml eval = ' + sys.inspect(descriptor));
-
+                    console.warn('object returned from yaml eval = ' + util.inspect(descriptor,false,null));
+                    
+                    
                     var requires = Array.from(!nil(descriptor.requires) ? descriptor.requires : []);
                     var provides = Array.from(!nil(descriptor.provides) ? descriptor.provides : []);
                     var optional = Array.from(!nil(descriptor.optional) ? descriptor.optional : []);

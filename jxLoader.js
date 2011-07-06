@@ -101,7 +101,7 @@ var jxLoader = new Class({
                         descriptor = yaml.evaluate(str, debug);
                     } catch (err) {
                         me.logger.error('!!! error converting yaml');
-                        me.logger.error('YAML object: ' + util.inspect(yaml,false,nu));
+                        me.logger.error('YAML object: ' + util.inspect(yaml,false,null));
                         me.logger.error('error: ' + util.inspect(err,false,null));
                         throw err;
                     }

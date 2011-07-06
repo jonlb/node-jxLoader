@@ -170,19 +170,23 @@ var jxLoader = new Class({
 
     parse_name: function (def, name){
         
-        var exploded = name.split('/');
+        var exploded = name.split('/'),
+            ret;
         if (this.debug) this.logger.debug('exploded = ' + util.inspect(exploded,false,null));
         if (exploded.length == 1 || exploded[0].length == 0) {
-            return [def, exploded[0]];
+            ret = [def, exploded[0]];
         }
         if (nil(exploded[0])) {
-            return [def, exploded[1]];
+            ret = [def, exploded[1]];
         }
         var exploded2 = exploded[0].split(':');
         if (exploded2.length == 1) {
-            return exploded;
+            ret = exploded;
+        } else {
+            ret = [exploded2[0],exploded[1]];
         }
-        return [exploded2[0],exploded[1]];
+        if (this.debug) this.logger.debug("returning from parse_name: " + util.inspect(ret,false,null));
+        return ret;
     },
 
     flatten: function (obj) {

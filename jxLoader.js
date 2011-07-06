@@ -288,7 +288,7 @@ var jxLoader = new Class({
         } else {
             ret = false;
         }
-        if (debug) this.logger.warn("returning: " + util.inspect(ret,false,null));
+        if (this.debug) this.logger.warn("returning: " + util.inspect(ret,false,null));
         return ret;
     },
 

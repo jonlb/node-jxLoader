@@ -86,27 +86,27 @@ var jxLoader = new Class({
                     regexp = /^-{3}\s*\n*([\S\s]*)\n+\.{3}/m,  //regexp to get yaml contents
                     matches = data.match(regexp);
 
-                if (this.debug) this.logger.debug('All matches from getting yaml headers: ' + util.inspect(matches,false,null));
+                if (me.debug) me.logger.debug('All matches from getting yaml headers: ' + util.inspect(matches,false,null));
 
                 if (!nil(matches)) {
                     matches.shift();
                     delete matches.index;
                     delete matches.input;
-                    if (this.debug) this.logger.debug('matches is a ' + typeOf(matches));
-                    if (this.debug) this.logger.debug('Matches from getting yaml headers: ' + matches[0]);
+                    if (me.debug) me.logger.debug('matches is a ' + typeOf(matches));
+                    if (me.debug) me.logger.debug('Matches from getting yaml headers: ' + matches[0]);
                     //remove \n from the string
                     var str = matches[0].replace(new RegExp('\r','g'),'');
-                    if (this.debug) this.logger.debug('Matches from getting yaml headers after replacement: ' + str);
+                    if (me.debug) me.logger.debug('Matches from getting yaml headers after replacement: ' + str);
                     try {
                         descriptor = yaml.evaluate(str, debug);
                     } catch (err) {
-                        this.logger.error('!!! error converting yaml');
-                        this.logger.error('YAML object: ' + util.inspect(yaml,false,nu));
-                        this.logger.error('error: ' + util.inspect(err,false,null));
+                        me.logger.error('!!! error converting yaml');
+                        me.logger.error('YAML object: ' + util.inspect(yaml,false,nu));
+                        me.logger.error('error: ' + util.inspect(err,false,null));
                         throw err;
                     }
 
-                    this.logger.debug('object returned from yaml eval = ' + util.inspect(descriptor,false,null));
+                    me.logger.debug('object returned from yaml eval = ' + util.inspect(descriptor,false,null));
                     
                     
                     var requires = Array.from(!nil(descriptor.requires) ? descriptor.requires : []);
@@ -143,16 +143,16 @@ var jxLoader = new Class({
                     
                     me.repos[key][filename] = obj;
 
-                    if (this.debug) this.logger.debug('Done processing ' + filename);
+                    if (me.debug) me.logger.debug('Done processing ' + filename);
                 } else {
                     //there is no yaml header... drop this file
-                    this.logger.debug('no header for ' + file);
+                    me.logger.debug('no header for ' + file);
                 }
 
 
 
             } catch (err) {
-                this.logger.error('!!!err : ' + util.inspect(err,false,null));
+                me.logger.error('!!!err : ' + util.inspect(err,false,null));
                 //do nothing, just finish up
                 //sys.puts('no file ' + file);
                 throw err;

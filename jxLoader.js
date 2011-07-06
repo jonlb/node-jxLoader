@@ -31,11 +31,16 @@ var jxLoader = new Class({
     flat: null,
     numRepos: 0,
     loadedRepos: 0,
+    logger: null,
+    debug: false,
 
     initialize: function (options) {
         this.setOptions(options);
         this.config = {};
         this.repos = {};
+        
+        this.logger = !nil(options.logger)?options.logger : console;
+        this.debug =  nil(options.debug)? false : options.debug;
     },
 
     /**
@@ -71,37 +76,36 @@ var jxLoader = new Class({
         Walker(p).filterDir(function(dir){
             return !(dir.test('^\.[\S\s]*$','i'));
         }).on('file', function(file){
-            var debug = (file == '');
             try {
                 var data = fs.readFileSync(file, 'utf-8');
                 
-               if (debug) sys.puts('File contents: ' + sys.inspect(data));
+               if (this.debug) sys.puts('File contents: ' + sys.inspect(data));
                 //process the file
                 var descriptor = {},
                     regexp = /^-{3}\s*\n*([\S\s]*)\n+\.{3}/m,  //regexp to get yaml contents
                     matches = data.match(regexp);
 
-                if (debug) sys.puts('All matches from getting yaml headers: ' + sys.inspect(matches));
+                if (this.debug) this.logger.debug('All matches from getting yaml headers: ' + util.inspect(matches,false,null));
 
                 if (!nil(matches)) {
                     matches.shift();
                     delete matches.index;
                     delete matches.input;
-                    if (debug) sys.puts('matches is a ' + typeOf(matches));
-                    if (debug) sys.puts('Matches from getting yaml headers: ' + matches[0]);
+                    if (this.debug) this.logger.debug('matches is a ' + typeOf(matches));
+                    if (this.debug) this.logger.debug('Matches from getting yaml headers: ' + matches[0]);
                     //remove \n from the string
                     var str = matches[0].replace(new RegExp('\r','g'),'');
-                    if (debug) sys.puts('Matches from getting yaml headers after replacement: ' + str);
+                    if (this.debug) this.logger.debug('Matches from getting yaml headers after replacement: ' + str);
                     try {
                         descriptor = yaml.evaluate(str, debug);
                     } catch (err) {
-                        sys.puts('!!! error converting yaml');
-                        sys.puts('YAML object: ' + sys.inspect(yaml));
-                        sys.puts('error: ' + sys.inspect(err));
+                        this.logger.error('!!! error converting yaml');
+                        this.logger.error('YAML object: ' + util.inspect(yaml,false,nu));
+                        this.logger.error('error: ' + util.inspect(err,false,null));
                         throw err;
                     }
 
-                    console.warn('object returned from yaml eval = ' + util.inspect(descriptor,false,null));
+                    this.logger.debug('object returned from yaml eval = ' + util.inspect(descriptor,false,null));
                     
                     
                     var requires = Array.from(!nil(descriptor.requires) ? descriptor.requires : []);
@@ -138,17 +142,16 @@ var jxLoader = new Class({
                     
                     me.repos[key][filename] = obj;
 
-                    if (debug) sys.puts('Done processing ' + filename);
+                    if (this.debug) this.logger.debug('Done processing ' + filename);
                 } else {
                     //there is no yaml header... drop this file
-                    sys.puts('no header for ' + file);
-                    if (debug) throw new Error();
+                    this.logger.debug('no header for ' + file);
                 }
 
 
 
             } catch (err) {
-                sys.puts('!!!err : ' + sys.inspect(err));
+                this.logger.error('!!!err : ' + util.inspect(err,false,null));
                 //do nothing, just finish up
                 //sys.puts('no file ' + file);
                 throw err;
@@ -167,7 +170,7 @@ var jxLoader = new Class({
     parse_name: function (def, name){
         
         var exploded = name.split('/');
-        //sys.puts('exploded = ' + sys.inspect(exploded));
+        if (this.debug) this.logger.debug('exploded = ' + util.inspect(exploded,false,null));
         if (exploded.length == 1 || exploded[0].length == 0) {
             return [def, exploded[0]];
         }
@@ -240,7 +243,7 @@ var jxLoader = new Class({
                 list = this.includeDependencies(r, val, opts, exclude, this.flat, list, type);
             },this);
         }
-        sys.puts('list of dependencies: ' + sys.inspect(list));
+        this.logger.info('list of dependencies: ' + util.inspect(list,false,null));
         return list;
     },
 
@@ -258,7 +261,7 @@ var jxLoader = new Class({
         var deps, 
             ret;
             
-        sys.puts("repos passed in: " + util.inspect(repos,false,null));
+        this.logger.info("repos passed in: " + util.inspect(repos,false,null));
         
         if (includeDeps || !nil(repos)) {
             deps = this.compileDeps(classes, repos, type, opts, exclude);
@@ -284,7 +287,7 @@ var jxLoader = new Class({
         } else {
             ret = false;
         }
-        //console.warn("returning: " + util.inspect(ret,false,null));
+        if (debug) this.logger.warn("returning: " + util.inspect(ret,false,null));
         return ret;
     },
 
@@ -410,7 +413,7 @@ var jxLoader = new Class({
                             if (this.options.rewriteImageUrl && !nil(this.config.repos[parts[0]].imageUrl)) {
                                 s = s.replace(new RegExp(this.config.repos[parts[0]].imageUrl, 'g'),this.options.imagePath);
                             } else {
-                                sys.puts('not updating urls in css file ' + css);
+                                this.logger.info('not updating urls in css file ' + css);
                             }
                             sources.push(s);
                         } else {
@@ -424,7 +427,7 @@ var jxLoader = new Class({
                                     if (this.options.rewriteImageUrl && !nil(this.config.repos[parts[0]].imageUrl)) {
                                         s = s.replace(new RegExp(this.config.repos[parts[0]].imageUrl, 'g'),this.options.imagePath);
                                     } else {
-                                        sys.puts('not updating urls in css file ' + css);
+                                        this.logger.info('not updating urls in css file ' + css);
                                     }
                                     sources.push(s);
                                 }
@@ -455,14 +458,14 @@ var jxLoader = new Class({
 
                                     inStr.pipe(outStr);
                                 } else {
-                                    sys.puts('\t\tFile already exists');
+                                    this.logger.info('\t\tFile already exists');
                                 }
                             },this);
                         } else {
-                            sys.puts('No image files to move');
+                            this.logger.info('No image files to move');
                         }
                     } else {
-                        sys.puts('Not moving image files');
+                        this.logger.info('Not moving image files');
                     }
                 }
             }

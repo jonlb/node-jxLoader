@@ -172,11 +172,11 @@ var jxLoader = new Class({
         
         var exploded = name.split('/');
         if (this.debug) this.logger.debug('exploded = ' + util.inspect(exploded,false,null));
-        if (exploded.length == 1 || exploded[0].length == 0) {
+        if (exploded.length == 1 ) {
             if (this.debug) this.logger.debug("returning from parse_name: " + util.inspect([def, exploded[0]],false,null));
             return [def, exploded[0]];
         }
-        if (nil(exploded[0])) {
+        if (nil(exploded[0]) || exploded[0].length == 0) {
             if (this.debug) this.logger.debug("returning from parse_name: " + util.inspect([def, exploded[1]],false,null));
             return [def, exploded[1]];
         }

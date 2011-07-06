@@ -39,7 +39,8 @@ var jxLoader = new Class({
         this.config = {};
         this.repos = {};
         
-        this.logger = !nil(options.logger)?options.logger : console;
+        this.logger = !nil(options.logger) ? options.logger : console;
+        this.logger.info("Received logger in jxLoader");
         this.debug =  nil(options.debug)? false : options.debug;
     },
 

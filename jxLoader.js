@@ -165,9 +165,10 @@ var jxLoader = new Class({
     },
 
     parse_name: function (def, name){
-       var exploded = name.split('/');
+        
+        var exploded = name.split('/');
         //sys.puts('exploded = ' + sys.inspect(exploded));
-        if (exploded.length == 1) {
+        if (exploded.length == 1 || exploded[0].length == 0) {
             return [def, exploded[0]];
         }
         if (nil(exploded[0])) {

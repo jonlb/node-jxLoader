@@ -98,7 +98,7 @@ var jxLoader = new Class({
                     var str = matches[0].replace(new RegExp('\r','g'),'');
                     if (me.debug) me.logger.debug('Matches from getting yaml headers after replacement: ' + str);
                     try {
-                        descriptor = yaml.evaluate(str, debug);
+                        descriptor = yaml.evaluate(str, me.debug);
                     } catch (err) {
                         me.logger.error('!!! error converting yaml');
                         me.logger.error('YAML object: ' + util.inspect(yaml,false,null));

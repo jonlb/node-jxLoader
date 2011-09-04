@@ -127,7 +127,8 @@ var jxLoader = new Class({
                     if (nil(me.repos[key])) {
                         me.repos[key] = {};
                     }
-                    me.repos[key][filename] = Object.merge(descriptor,{
+                    var index = String.uniqueID();
+                    me.repos[key][index] = Object.merge(descriptor,{
                         repo: key,
                         requires: requires,
                         provides: provides,
@@ -137,20 +138,17 @@ var jxLoader = new Class({
                     
                     //make sure this is truly an object, not an array
                     var obj = {};
-                    Object.each(me.repos[key][filename], function(value, key){
+                    Object.each(me.repos[key][index], function(value, key){
                         obj[key] = value;
                     });
                     
-                    me.repos[key][filename] = obj;
+                    me.repos[key][index] = obj;
 
                     if (me.debug) me.logger.debug('Done processing ' + filename);
                 } else {
                     //there is no yaml header... drop this file
                     me.logger.debug('no header for ' + file);
                 }
-
-
-
             } catch (err) {
                 me.logger.error('!!!err : ' + util.inspect(err,false,null));
                 //do nothing, just finish up
@@ -176,7 +174,7 @@ var jxLoader = new Class({
             if (this.debug) this.logger.debug("returning from parse_name: " + util.inspect([def, exploded[0]],false,null));
             return [def, exploded[0]];
         }
-        if (nil(exploded[0]) || exploded[0].length == 0) {
+        if (nil(exploded[0]) || exploded[0].length === 0) {
             if (this.debug) this.logger.debug("returning from parse_name: " + util.inspect([def, exploded[1]],false,null));
             return [def, exploded[1]];
         }
@@ -389,10 +387,13 @@ var jxLoader = new Class({
     },
 
     getJsFiles: function (sources, included, deps) {
+        this.logger.debug('list of dependencies: ' + util.inspect(deps,false,null));
         deps.each(function(filename){
+            this.logger.debug('reading file: ' + filename);
             var s = fs.readFileSync(filename, 'utf-8');
             sources.push(s);
             included.push(filename);
+            this.logger.debug('done reading file: ' + filename);
         },this);
         return {
             includes: included,

@@ -391,6 +391,14 @@ var jxLoader = new Class({
         deps.each(function(filename){
             this.logger.debug('reading file: ' + filename);
             var s = fs.readFileSync(filename, 'utf-8');
+            //Remove any tags
+            if (this.options.tags !== null && this.options.tags !== undefined) {
+                Array.from(this.options.tags).each(function(tag){
+                    var t = tag.escapeRegExp();
+                        re = new RegExp('//<' + t + '>[\s\S]*?//</' + t + '>','gi');
+                    s = s.replace(re,'');
+                },this);
+            }
             sources.push(s);
             included.push(filename);
             this.logger.debug('done reading file: ' + filename);

@@ -395,7 +395,10 @@ var jxLoader = new Class({
             if (this.options.tags !== null && this.options.tags !== undefined) {
                 Array.from(this.options.tags).each(function(tag){
                     var t = tag.escapeRegExp();
-                        re = new RegExp('//<' + t + '>[\s\S]*?//</' + t + '>','gi');
+                        re = new RegExp('//<' + t + '>[\\s\\S]*?//</' + t + '>','gi');
+                    s = s.replace(re,'');
+                    re = new RegExp('/\\*<' + t + '>\\*/[\\s\\S]*?/\\*</' + t + '>\\*/','gi');
+                    this.logger.debug('2nd regex = ' + util.inspect(re,false,null));
                     s = s.replace(re,'');
                 },this);
             }

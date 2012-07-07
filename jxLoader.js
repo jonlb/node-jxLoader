@@ -425,7 +425,7 @@ var jxLoader = new Class({
                 if (cssfiles.length > 0) {
                     cssfiles.each(function(css){
                         var fp = csspath + '/' + css + '.css';
-                        if (path.existsSync(fp)) {
+                        if (fs.existsSync(fp)) {
                             var s = fs.readFileSync(fp, 'utf-8');
                             if (this.options.rewriteImageUrl && !nil(this.config.repos[parts[0]].imageUrl)) {
                                 s = s.replace(new RegExp(this.config.repos[parts[0]].imageUrl, 'g'),this.options.imagePath);
@@ -439,7 +439,7 @@ var jxLoader = new Class({
                                 csspathalt = csspathalt.replace('{theme}',theme);
                                 csspathalt = fs.realpathSync(csspathalt);
                                 fp = csspathalt + '/' + css + '.css';
-                                if (path.existsSync(fp)) {
+                                if (fs.existsSync(fp)) {
                                     var s = fs.readFileSync(fp, 'utf-8');
                                     if (this.options.rewriteImageUrl && !nil(this.config.repos[parts[0]].imageUrl)) {
                                         s = s.replace(new RegExp(this.config.repos[parts[0]].imageUrl, 'g'),this.options.imagePath);
@@ -464,12 +464,12 @@ var jxLoader = new Class({
                             ipath = fs.realpathSync(ipath);
 
                             //create destination if it's not already there
-                            if (!path.existsSync(imageLocation)) {
+                            if (!fs.existsSync(imageLocation)) {
                                 fs.mkdirSync(imageLocation);
                             }
 
                             imageFiles.each(function(file){
-                                if (!path.existsSync(imageLocation + '/' + file)) {
+                                if (!fs.existsSync(imageLocation + '/' + file)) {
                                     var inStr = fs.createReadStream(ipath + '/' + file),
                                         outStr = fs.createWriteStream(imageLocation + '/' + file);
 

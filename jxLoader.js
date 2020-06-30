@@ -5,7 +5,7 @@
 
 //requires
 var yaml = require('js-yaml').YAML,
-    sys = require('sys'),
+    util = require('util'),
     fsp = require('fs-promise'),
     fs = require('fs'),
     path = require('path'),
@@ -15,9 +15,9 @@ var yaml = require('js-yaml').YAML,
 //check to see if mootools is already in the environment
 if (typeof MooTools == 'undefined') {
     require('mootools').apply(GLOBAL);
-    sys.puts('loaded mootools');
+    util.puts('loaded mootools');
 } else {
-    sys.puts('mootools already loaded');
+    util.puts('mootools already loaded');
 }
 
 var jxLoader = new Class({
@@ -80,7 +80,7 @@ var jxLoader = new Class({
             try {
                 var data = fs.readFileSync(file, 'utf-8');
                 
-               if (this.debug) sys.puts('File contents: ' + sys.inspect(data));
+               if (this.debug) util.puts('File contents: ' + util.inspect(data));
                 //process the file
                 var descriptor = {},
                     regexp = /^-{3}\s*\n*([\S\s]*)\n+\.{3}/m,  //regexp to get yaml contents
@@ -152,7 +152,7 @@ var jxLoader = new Class({
             } catch (err) {
                 me.logger.error('!!!err : ' + util.inspect(err,false,null));
                 //do nothing, just finish up
-                //sys.puts('no file ' + file);
+                //util.puts('no file ' + file);
                 throw err;
             }
 
@@ -220,9 +220,9 @@ var jxLoader = new Class({
         }
 
         if (!nil(repos)) {
-            sys.puts("in compileDeps... ready to get repo info");
-            sys.puts("repos to get: " + util.inspect(repos, false, null));
-            sys.puts("type: " + type);
+            util.puts("in compileDeps... ready to get repo info");
+            util.puts("repos to get: " + util.inspect(repos, false, null));
+            util.puts("type: " + type);
             Array.from(repos).each(function(val){
                 var o = {};
                 o[val] = this.repos[val];
